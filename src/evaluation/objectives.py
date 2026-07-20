@@ -190,22 +190,22 @@ class ObjectiveEvaluator:
             if student.preference_list:
                 total += 1.0  # 1/1 for first choice
         return total
+ 
 
     def _compute_max_professor_satisfaction(self) -> float:
         """
         Compute theoretical maximum professor satisfaction.
-
-        This occurs when every professor gets their top-choice students.
-
+        This occurs when every student is ranked #1 by their assigned professor.
+        
+        Since each student can only be assigned once, the max is limited
+        by the number of students, not the sum of all professor capacities.
+        
         Returns:
             Maximum possible professor satisfaction score
         """
-        total = 0.0
-        for professor in self.professors:
-            # Each professor can have up to capacity students
-            # Max satisfaction if they all are rank 1
-            total += professor.capacity * 1.0
-        return total
+        # The maximum is when ALL students are rank 1 for their professors
+        # Limited by number of students, not total capacity
+        return float(len(self.students))
 
     def compute_student_satisfaction_single(
         self, student_id: str, professor_id: str
