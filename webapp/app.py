@@ -360,32 +360,34 @@ async def run_single_algorithm(
                 return {"error": "No Pareto front found"}
 
             # Select the first solution from the Pareto front to display details
-            # (In NSGA-II, the front is sorted by Rank then Crowding Distance)
             best_chromosome = pareto_front[0]
             best_obj = objectives[0]
 
-            # Sanitize objectives for JSON (replace inf with large number)
-            sanitized_objectives = []
-            for obj in objectives[:20]:
-                sanitized = {
+            # Build Pareto front with assignments for EACH solution
+            pareto_front_with_assignments = []
+            for i, (chromosome, obj) in enumerate(zip(pareto_front[:20], objectives[:20])):
+                # Get assignments for this specific chromosome
+                assignments = chromosome.to_assignment_dict()
+                
+                # Sanitize objectives
+                sanitized_obj = {
                     "student_satisfaction": obj["student_satisfaction"],
                     "professor_satisfaction": obj["professor_satisfaction"],
                     "fairness": obj["fairness"],
                     "rank": obj["rank"],
                     "crowding_distance": 999.0 if obj["crowding_distance"] == float("inf") else obj["crowding_distance"],
+                    "assignments": assignments  # Include assignments for EACH solution
                 }
-                sanitized_objectives.append(sanitized)
+                pareto_front_with_assignments.append(sanitized_obj)
 
             return {
                 "algorithm": "NSGA-II",
                 "execution_time": round(time.time() - start_time, 2),
-                # Use the metrics from the specific chosen solution, not the max/min of the whole front
                 "student_satisfaction": round(best_obj["student_satisfaction"], 4),
                 "professor_satisfaction": round(best_obj["professor_satisfaction"], 4),
                 "fairness": round(best_obj["fairness"], 4),
                 "num_pareto_solutions": len(pareto_front),
-                "pareto_front": sanitized_objectives,
-                # ADD THIS: Include the actual assignments for the chosen solution
+                "pareto_front": pareto_front_with_assignments,  # Now includes assignments
                 "assignments": best_chromosome.to_assignment_dict(),
             }
 

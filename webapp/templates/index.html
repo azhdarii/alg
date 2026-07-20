@@ -31,6 +31,8 @@
         .btn-danger { background: #dc3545; color: white; }
         .btn-danger:hover { background: #c82333; }
         .btn-sm { padding: 8px 16px; font-size: 13px; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #218838; }
         .results { margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; }
         .results h3 { margin-bottom: 20px; color: #333; }
         .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
@@ -78,6 +80,12 @@
         .preview-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
         .preview-table th { background: #f5f5f5; padding: 8px; text-align: left; position: sticky; top: 0; }
         .preview-table td { padding: 8px; border-bottom: 1px solid #eee; }
+        .pareto-item { border: 1px solid #ddd; padding: 10px; border-radius: 5px; cursor: pointer; background: white; transition: all 0.2s; }
+        .pareto-item:hover { border-color: #667eea; background: #f8f9ff; transform: translateY(-2px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .assignments-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+        .prof-group { border: 1px solid #e0e0e0; padding: 10px; border-radius: 5px; background: #fafafa; }
+        .prof-group-title { font-weight: bold; color: #333; margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .student-name { font-size: 0.9em; color: #555; padding: 2px 0; }
     </style>
 </head>
 <body>
@@ -91,7 +99,7 @@
             <div class="tab active" onclick="showTab('datasets')">Datasets</div>
             <div class="tab" onclick="showTab('single')">Single Run</div>
             <div class="tab" onclick="showTab('compare')">Compare Algorithms</div>
-            <div class="tab" onclick="showTab('about')">About</div>
+            
         </div>
 
         <!-- Datasets Panel -->
@@ -152,10 +160,10 @@
 
             <div class="form-group">
                 <label>Algorithm</label>
-                <select id="algorithm-select" onchange="toggleWSParams()">
-    <option value="weighted_sum">Weighted Sum GA</option>
-    <option value="nsga2">NSGA-II</option>
-</select>
+                    <select id="algorithm" onchange="toggleWSParams()">
+                        <option value="weighted_sum">Weighted Sum GA</option>
+                        <option value="nsga2">NSGA-II</option>
+                    </select>
             </div>
 
             <div class="form-row">
@@ -352,34 +360,7 @@
             <div id="compare-results"></div>
         </div>
 
-        <!-- About Panel -->
-        <div id="about" class="panel">
-            <h2>About This Tool</h2>
-            <p style="margin-bottom: 20px;">This tool compares two multi-objective optimization algorithms for the Student-Supervisor Assignment Problem.</p>
-
-            <h3 style="margin-bottom: 10px;">Algorithms</h3>
-            <ul style="margin-bottom: 20px; padding-left: 20px;">
-                <li><strong>Weighted Sum GA:</strong> Combines objectives into single fitness using weights</li>
-                <li><strong>NSGA-II:</strong> Non-dominated Sorting Genetic Algorithm II - maintains Pareto front</li>
-            </ul>
-
-            <h3 style="margin-bottom: 10px;">Objectives</h3>
-            <ul style="margin-bottom: 20px; padding-left: 20px;">
-                <li><strong>Student Satisfaction:</strong> Maximize preference matching (higher is better)</li>
-                <li><strong>Professor Satisfaction:</strong> Maximize preference matching (higher is better)</li>
-                <li><strong>Fairness:</strong> Minimize variance in student quality distribution (lower is better)</li>
-            </ul>
-
-            <h3 style="margin-bottom: 10px;">Statistical Testing</h3>
-            <p>Mann-Whitney U Test is used to determine if differences are statistically significant (alpha = 0.05).</p>
-
-            <h3 style="margin-top: 20px; margin-bottom: 10px;">Pre-defined Datasets</h3>
-            <ul style="padding-left: 20px;">
-                <li><strong>small:</strong> 20 students, 8 professors</li>
-                <li><strong>medium:</strong> 60 students, 12 professors</li>
-                <li><strong>large:</strong> 150 students, 28 professors</li>
-            </ul>
-        </div>
+          
     </div>
 
     <script>
@@ -390,6 +371,10 @@
             'student-prefs': null,
             'prof-prefs': null
         };
+
+        // Global variable to store the current Pareto front data
+        window.currentParetoFront = [];
+        window.currentAssignments = null;
 
         function showTab(tabId) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -623,6 +608,17 @@
             return isNaN(num) ? 10 : num;
         }
 
+        function toggleWSParams() {
+            const algorithm = document.getElementById('algorithm').value;
+            const wsParams = document.getElementById('ws-params');
+            
+            if (algorithm === 'weighted_sum') {
+                wsParams.style.display = 'block';
+            } else {
+                wsParams.style.display = 'none';
+            }
+        }
+
         async function runSingleAlgorithm() {
             const btn = document.getElementById('run-single-btn');
             btn.disabled = true;
@@ -672,63 +668,354 @@
 
             btn.disabled = false;
         }
+function displaySingleResults(data) {
+    let html = `
+        <div class="results">
+            <h3>${data.algorithm} Results</h3>
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div class="value">${(data.student_satisfaction * 100).toFixed(1)}%</div>
+                    <div class="label">Student Satisfaction</div>
+                </div>
+                <div class="metric-card">
+                    <div class="value">${(data.professor_satisfaction * 100).toFixed(1)}%</div>
+                    <div class="label">Professor Satisfaction</div>
+                </div>
+                <div class="metric-card">
+                    <div class="value">${data.fairness.toFixed(4)}</div>
+                    <div class="label">Fairness (lower=better)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="value">${data.execution_time.toFixed(2)}s</div>
+                    <div class="label">Execution Time</div>
+                </div>
+            </div>
+    `;
 
-        function displaySingleResults(data) {
-            let html = `
-                <div class="results">
-                    <h3>${data.algorithm} Results</h3>
-                    <div class="metric-grid">
-                        <div class="metric-card">
-                            <div class="value">${(data.student_satisfaction * 100).toFixed(1)}%</div>
-                            <div class="label">Student Satisfaction</div>
+    // Weighted Sum specific info
+    if (data.fitness !== null && data.fitness !== undefined) {
+        html += `<p><strong>Fitness:</strong> ${data.fitness.toFixed(6)}</p>`;
+    }
+    if (data.capacity_penalty !== undefined) {
+        html += `<p><strong>Capacity Violations:</strong> ${data.capacity_penalty}</p>`;
+    }
+    if (data.field_penalty !== undefined) {
+        html += `<p><strong>Field Mismatches:</strong> ${data.field_penalty}</p>`;
+    }
+
+    // Get all assignments - either from pareto_front or direct assignments
+    let allAssignments = [];
+    
+    // If we have pareto_front, get all assignments from all solutions
+    if (data.pareto_front && data.pareto_front.length > 0) {
+        data.pareto_front.forEach((solution, idx) => {
+            let assignments = null;
+            
+            // Try different formats
+            if (Array.isArray(solution) && solution.length >= 2) {
+                assignments = solution[1]; // Legacy format
+            } else if (solution.assignments) {
+                assignments = solution.assignments;
+            }
+            
+            if (assignments && Object.keys(assignments).length > 0) {
+                allAssignments.push({
+                    solutionIndex: idx + 1,
+                    student_satisfaction: solution.student_satisfaction || (Array.isArray(solution) ? solution[0][0] : 0),
+                    professor_satisfaction: solution.professor_satisfaction || (Array.isArray(solution) ? solution[0][1] : 0),
+                    fairness: solution.fairness || (Array.isArray(solution) ? solution[0][2] : 0),
+                    assignments: assignments
+                });
+            }
+        });
+    } else if (data.assignments && Object.keys(data.assignments).length > 0) {
+        // Single solution
+        allAssignments.push({
+            solutionIndex: 1,
+            student_satisfaction: data.student_satisfaction,
+            professor_satisfaction: data.professor_satisfaction,
+            fairness: data.fairness,
+            assignments: data.assignments
+        });
+    }
+
+    // Display all assignments
+    if (allAssignments.length > 0) {
+        html += `
+            <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                <h4>All Assignments (${allAssignments.length} solution${allAssignments.length > 1 ? 's' : ''})</h4>
+        `;
+        
+        // Show each solution's assignments
+        allAssignments.forEach((solution, idx) => {
+            html += `
+                <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border: 1px solid #e0e0e0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                        <div style="font-weight: bold; color: #667eea;">
+                            Solution ${solution.solutionIndex}
                         </div>
-                        <div class="metric-card">
-                            <div class="value">${(data.professor_satisfaction * 100).toFixed(1)}%</div>
-                            <div class="label">Professor Satisfaction</div>
+                        <div style="display: flex; gap: 15px; font-size: 0.9em; color: #555;">
+                            <span>Student: ${(solution.student_satisfaction * 100).toFixed(1)}%</span>
+                            <span>Professor: ${(solution.professor_satisfaction * 100).toFixed(1)}%</span>
+                            <span>Fairness: ${solution.fairness.toFixed(4)}</span>
                         </div>
-                        <div class="metric-card">
-                            <div class="value">${data.fairness.toFixed(4)}</div>
-                            <div class="label">Fairness (lower=better)</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="value">${data.execution_time.toFixed(2)}s</div>
-                            <div class="label">Execution Time</div>
-                        </div>
+                        <button onclick="downloadSpecificAssignments(${idx})" class="btn btn-success btn-sm">
+                            📥 Download CSV
+                        </button>
                     </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
             `;
-
-            if (data.fitness !== null && data.fitness !== undefined) {
-                html += `<p><strong>Fitness:</strong> ${data.fitness.toFixed(6)}</p>`;
+            
+            // Group assignments by professor
+            const profGroups = {};
+            for (const [student, prof] of Object.entries(solution.assignments)) {
+                if (!profGroups[prof]) profGroups[prof] = [];
+                profGroups[prof].push(student);
             }
-
-            if (data.num_pareto_solutions) {
-                html += `<p><strong>Pareto Front Size:</strong> ${data.num_pareto_solutions} solutions</p>`;
-            }
-
-            if (data.capacity_penalty !== undefined) {
-                html += `<p><strong>Capacity Violations:</strong> ${data.capacity_penalty}</p>`;
-            }
-
-            if (data.field_penalty !== undefined) {
-                html += `<p><strong>Field Mismatches:</strong> ${data.field_penalty}</p>`;
-            }
-
-            if (data.assignments) {
+            
+            // Sort professors
+            const sortedProfNames = Object.keys(profGroups).sort();
+            for (const prof of sortedProfNames) {
+                const students = profGroups[prof].sort();
                 html += `
-                    <h4 style="margin-top: 20px;">Assignments</h4>
-                    <div class="assignment-list">
+                    <div class="prof-group">
+                        <div class="prof-group-title">${prof}</div>
+                        ${students.map(s => `<div class="student-name">${s}</div>`).join('')}
+                    </div>
                 `;
-                for (const [student, prof] of Object.entries(data.assignments)) {
-                    html += `<div class="assignment-item"><span>${student}</span><span>→</span><span>${prof}</span></div>`;
-                }
-                html += `</div>`;
             }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+        });
+        
+        // Store all solutions for download
+        window.allSolutions = allAssignments;
+        
+        html += `
+                <div style="margin-top: 20px; text-align: center;">
+                    <button onclick="downloadAllAssignments()" class="btn btn-primary">
+                        📥 Download All Solutions (CSV)
+                    </button>
+                </div>
+            </div>
+        `;
+    } else {
+        html += `<p style="color: #999; margin-top: 20px;">No assignments available.</p>`;
+    }
 
-            html += `</div>`;
-            document.getElementById('single-results').innerHTML = html;
+    html += `</div>`;
+    document.getElementById('single-results').innerHTML = html;
+}
+       function renderAssignments(assignments) {
+    const container = document.getElementById('assignments-container');
+    if (!container) return;
+
+    let html = '';
+    
+    // Handle different assignment formats
+    let assignmentMap = {};
+    
+    if (Array.isArray(assignments)) {
+        // If assignments is an array of [student, professor] pairs
+        for (const item of assignments) {
+            if (Array.isArray(item) && item.length === 2) {
+                assignmentMap[item[0]] = item[1];
+            } else if (typeof item === 'object' && item.student && item.professor) {
+                assignmentMap[item.student] = item.professor;
+            }
         }
+    } else if (typeof assignments === 'object') {
+        // If assignments is already a key-value object
+        assignmentMap = assignments;
+    } else {
+        container.innerHTML = '<p style="color: #999; grid-column: 1 / -1;">Invalid assignments format.</p>';
+        return;
+    }
+    
+    // Check if we have any assignments
+    const keys = Object.keys(assignmentMap);
+    if (keys.length === 0) {
+        container.innerHTML = '<p style="color: #999; grid-column: 1 / -1;">No assignments available for this solution.</p>';
+        return;
+    }
+    
+    // Group by professor
+    const profGroups = {};
+    for (const [student, prof] of Object.entries(assignmentMap)) {
+        if (!profGroups[prof]) profGroups[prof] = [];
+        profGroups[prof].push(student);
+    }
 
-        async function runComparison() {
+    // Sort professors alphabetically
+    const sortedProfNames = Object.keys(profGroups).sort();
+    
+    for (const prof of sortedProfNames) {
+        const students = profGroups[prof].sort();
+        html += `
+            <div class="prof-group">
+                <div class="prof-group-title">${prof}</div>
+                ${students.map(s => `<div class="student-name">${s}</div>`).join('')}
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    window.currentAssignments = assignmentMap;
+}
+       function showParetoAssignments(index) {
+    console.log("Clicked index:", index);
+    console.log("Current Pareto Front:", window.currentParetoFront);
+
+    if (!window.currentParetoFront || !window.currentParetoFront[index]) {
+        console.error("Pareto data not found for index", index);
+        alert("Error: Solution data not found.");
+        return;
+    }
+    
+    const sol = window.currentParetoFront[index];
+    const assignments = sol.assignments;
+
+    // Better debugging - log what assignments actually contains
+    console.log("Assignments for solution", index, ":", assignments);
+    console.log("Type of assignments:", typeof assignments);
+    console.log("Keys if object:", assignments ? Object.keys(assignments) : "null/undefined");
+    console.log("Length if array:", Array.isArray(assignments) ? assignments.length : "not array");
+
+    // Check if assignments exists and has data
+    if (!assignments) {
+        console.error("No assignments object found for solution", index);
+        alert("No assignment data available for this solution.");
+        return;
+    }
+
+    // Check if assignments is an empty object
+    if (typeof assignments === 'object' && !Array.isArray(assignments) && Object.keys(assignments).length === 0) {
+        console.error("Assignments object is empty for solution", index);
+        alert("This solution has no assignment data.");
+        return;
+    }
+
+    // Check if assignments is an empty array
+    if (Array.isArray(assignments) && assignments.length === 0) {
+        console.error("Assignments array is empty for solution", index);
+        alert("This solution has no assignment data.");
+        return;
+    }
+    
+    const title = document.getElementById('assignments-title');
+    
+    // Count the number of assignments
+    let numAssignments = 0;
+    if (typeof assignments === 'object' && !Array.isArray(assignments)) {
+        numAssignments = Object.keys(assignments).length;
+    } else if (Array.isArray(assignments)) {
+        numAssignments = assignments.length;
+    }
+    
+    // Update title
+    if (title) title.innerText = `Assignments for Solution ${index + 1} (${numAssignments} students)`;
+    
+    // Update global current assignments for download
+    window.currentAssignments = assignments;
+    
+    // Render the new assignments
+    renderAssignments(assignments);
+}
+        function downloadCurrentAssignments() {
+    if (!window.currentAssignments) {
+        alert("No assignments to download");
+        return;
+    }
+    
+    // Convert to map if needed
+    let assignmentMap = {};
+    
+    if (Array.isArray(window.currentAssignments)) {
+        for (const item of window.currentAssignments) {
+            if (Array.isArray(item) && item.length === 2) {
+                assignmentMap[item[0]] = item[1];
+            } else if (typeof item === 'object' && item.student && item.professor) {
+                assignmentMap[item.student] = item.professor;
+            }
+        }
+    } else if (typeof window.currentAssignments === 'object') {
+        assignmentMap = window.currentAssignments;
+    }
+    
+    const entries = Object.entries(assignmentMap);
+    if (entries.length === 0) {
+        alert("No assignments to download");
+        return;
+    }
+    
+    let csvContent = "Student,Professor\n";
+    for (const [student, prof] of entries) {
+        csvContent += `${student},${prof}\n`;
+    }
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "assignments.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+// Download specific solution's assignments
+function downloadSpecificAssignments(index) {
+    if (!window.allSolutions || !window.allSolutions[index]) {
+        alert("Solution not found");
+        return;
+    }
+    
+    const solution = window.allSolutions[index];
+    const assignments = solution.assignments;
+    
+    let csvContent = "Student,Professor\n";
+    for (const [student, prof] of Object.entries(assignments)) {
+        csvContent += `${student},${prof}\n`;
+    }
+    
+    downloadCSV(csvContent, `assignments_solution_${solution.solutionIndex}.csv`);
+}
+
+// Download all solutions
+function downloadAllAssignments() {
+    if (!window.allSolutions || window.allSolutions.length === 0) {
+        alert("No solutions to download");
+        return;
+    }
+    
+    let csvContent = "Solution,Student,Professor\n";
+    
+    window.allSolutions.forEach((solution, idx) => {
+        for (const [student, prof] of Object.entries(solution.assignments)) {
+            csvContent += `${solution.solutionIndex},${student},${prof}\n`;
+        }
+    });
+    
+    downloadCSV(csvContent, "all_assignments.csv");
+}
+
+// Helper function to download CSV
+function downloadCSV(csvContent, filename) {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}        
+
+async function runComparison() {
             const btn = document.getElementById('compare-btn');
             btn.disabled = true;
             showLoading('compare-results');
@@ -907,10 +1194,11 @@
         }
 
         // Load datasets on page load and initialize weight validation
-        window.onload = function() {
+        document.addEventListener('DOMContentLoaded', function() {
             loadDatasets();
             validateWeights('');
             validateWeights('compare-');
+            toggleWSParams();
 
             // Add event listeners for real-time weight validation
             ['weight-student', 'weight-professor', 'weight-fairness'].forEach(id => {
@@ -919,26 +1207,7 @@
             ['compare-weight-student', 'compare-weight-professor', 'compare-weight-fairness'].forEach(id => {
                 document.getElementById(id).addEventListener('input', () => validateWeights('compare-'));
             });
-        };
+        });
     </script>
-
-<script>
-    function toggleWSParams() {
-        const algorithm = document.getElementById('algorithm-select').value;
-        const wsParams = document.getElementById('ws-params');
-        
-        if (algorithm === 'weighted_sum') {
-            wsParams.style.display = 'block';
-        } else {
-            wsParams.style.display = 'none';
-        }
-    }
-
-    // Initialize on page load to ensure correct state
-    document.addEventListener('DOMContentLoaded', function() {
-        toggleWSParams();
-    });
-</script>
-
 </body>
 </html>
