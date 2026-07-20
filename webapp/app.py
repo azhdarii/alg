@@ -346,7 +346,6 @@ async def run_single_algorithm(
                 "penalty_capacity": cap_penalty if cap_penalty != float('inf') else "inf",
                 "penalty_field": field_penalty if field_penalty != float('inf') else "inf",
             }
-
         elif algorithm == "nsga2":
             nsga2_config = NSGA2Config(
                 tournament_size=tournament_size,
@@ -360,10 +359,10 @@ async def run_single_algorithm(
             if not pareto_front:
                 return {"error": "No Pareto front found"}
 
-            # Get best values
-            best_student = max(c.objectives.student_satisfaction for c in pareto_front)
-            best_professor = max(c.objectives.professor_satisfaction for c in pareto_front)
-            best_fairness = min(c.objectives.fairness for c in pareto_front)
+            # Select the first solution from the Pareto front to display details
+            # (In NSGA-II, the front is sorted by Rank then Crowding Distance)
+            best_chromosome = pareto_front[0]
+            best_obj = objectives[0]
 
             # Sanitize objectives for JSON (replace inf with large number)
             sanitized_objectives = []
@@ -380,11 +379,14 @@ async def run_single_algorithm(
             return {
                 "algorithm": "NSGA-II",
                 "execution_time": round(time.time() - start_time, 2),
-                "student_satisfaction": round(best_student, 4),
-                "professor_satisfaction": round(best_professor, 4),
-                "fairness": round(best_fairness, 4),
+                # Use the metrics from the specific chosen solution, not the max/min of the whole front
+                "student_satisfaction": round(best_obj["student_satisfaction"], 4),
+                "professor_satisfaction": round(best_obj["professor_satisfaction"], 4),
+                "fairness": round(best_obj["fairness"], 4),
                 "num_pareto_solutions": len(pareto_front),
                 "pareto_front": sanitized_objectives,
+                # ADD THIS: Include the actual assignments for the chosen solution
+                "assignments": best_chromosome.to_assignment_dict(),
             }
 
         else:

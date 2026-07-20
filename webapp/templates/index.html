@@ -152,10 +152,10 @@
 
             <div class="form-group">
                 <label>Algorithm</label>
-                <select id="algorithm">
-                    <option value="weighted_sum">Weighted Sum GA</option>
-                    <option value="nsga2">NSGA-II</option>
-                </select>
+                <select id="algorithm-select" onchange="toggleWSParams()">
+    <option value="weighted_sum">Weighted Sum GA</option>
+    <option value="nsga2">NSGA-II</option>
+</select>
             </div>
 
             <div class="form-row">
@@ -921,5 +921,24 @@
             });
         };
     </script>
+
+<script>
+    function toggleWSParams() {
+        const algorithm = document.getElementById('algorithm-select').value;
+        const wsParams = document.getElementById('ws-params');
+        
+        if (algorithm === 'weighted_sum') {
+            wsParams.style.display = 'block';
+        } else {
+            wsParams.style.display = 'none';
+        }
+    }
+
+    // Initialize on page load to ensure correct state
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleWSParams();
+    });
+</script>
+
 </body>
 </html>
