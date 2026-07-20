@@ -9,6 +9,7 @@ from ...models.professor import Professor
 from ...models.chromosome import Chromosome
 from ...models.population import Population
 from ...evaluation import ObjectiveEvaluator, ConstraintEvaluator
+from ...evaluation.hard_constraints import HardConstraintHandler
 from ...operators.mutation import MutationOperator, RandomResetMutation, SwapMutation
 from ...operators.crossover import CrossoverOperator, UniformCrossover
 from ...initialization import PopulationInitializer
@@ -114,6 +115,18 @@ class WeightedSumGA:
         )
         self.fitness_calculator = WeightedSumFitness(self.ws_config)
 
+        # Hard constraint handler (if enabled)
+        self.hard_constraint_handler = HardConstraintHandler(
+            students=self.students,
+            professors=self.professors,
+            capacity_hard=self.ws_config.capacity_hard,
+            field_hard=self.ws_config.field_hard,
+            hard_penalty=self.ws_config.hard_constraint_penalty,
+        )
+
+        if self.ws_config.capacity_hard or self.ws_config.field_hard:
+            print(f"      Hard constraints enabled: capacity={self.ws_config.capacity_hard}, field={self.ws_config.field_hard}")
+
         # Population initializer
         self.initializer = PopulationInitializer(
             self.students,
@@ -189,8 +202,15 @@ class WeightedSumGA:
         # Compute constraints
         chromosome.constraints = self.constraint_evaluator.evaluate(chromosome)
 
-        # Compute fitness (Weighted Sum specific)
-        chromosome.fitness = self.fitness_calculator.compute_fitness(chromosome)
+        # Compute base fitness (Weighted Sum specific)
+        base_fitness = self.fitness_calculator.compute_fitness(chromosome)
+
+        # Apply hard constraint penalty if enabled
+        if self.ws_config.capacity_hard or self.ws_config.field_hard:
+            hard_penalty = self.hard_constraint_handler.compute_hard_penalty(chromosome)
+            chromosome.fitness = base_fitness - hard_penalty
+        else:
+            chromosome.fitness = base_fitness
 
     def evaluate_population(self, population: Population) -> None:
         """Evaluate all unevaluated chromosomes in population."""

@@ -19,6 +19,9 @@ class WeightedSumConfig:
         normalize_objectives: Whether to normalize objectives to [0, 1]
         preserve_elitism: Number of best individuals to preserve
         tournament_size: Number of individuals in tournament selection
+        capacity_hard: Whether capacity is a hard constraint
+        field_hard: Whether field matching is a hard constraint
+        hard_constraint_penalty: Penalty multiplier for hard constraints
     """
 
     # Weights for objective combination
@@ -36,6 +39,11 @@ class WeightedSumConfig:
 
     # Tournament selection size
     tournament_size: int = 3
+
+    # Hard constraint flags
+    capacity_hard: bool = False
+    field_hard: bool = False
+    hard_constraint_penalty: float = 1e6
 
     def __post_init__(self) -> None:
         """Set default weights if not provided."""
@@ -78,6 +86,8 @@ class WeightedSumConfig:
             f"  weights={self.weights},\n"
             f"  constraint_weight={self.constraint_weight},\n"
             f"  preserve_elitism={self.preserve_elitism},\n"
-            f"  tournament_size={self.tournament_size}\n"
+            f"  tournament_size={self.tournament_size},\n"
+            f"  capacity_hard={self.capacity_hard},\n"
+            f"  field_hard={self.field_hard}\n"
             f")"
         )

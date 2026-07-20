@@ -308,23 +308,22 @@ async def run_single_algorithm(
             else:
                 weights = [0.4, 0.4, 0.2]
 
-            # For hard constraints (inf), use a very large penalty instead
-            constraint_weight = 1.0
-            if cap_penalty == float('inf') or field_penalty == float('inf'):
-                # Use large penalty multiplier for hard constraints
-                config.penalty.capacity_penalty_per_student = 1e6 if cap_penalty == float('inf') else cap_penalty
-                config.penalty.field_mismatch_penalty = 1e6 if field_penalty == float('inf') else field_penalty
-                constraint_weight = 0.001  # Small weight to avoid numerical issues
-            else:
-                config.penalty.capacity_penalty_per_student = cap_penalty
-                config.penalty.field_mismatch_penalty = field_penalty
-                constraint_weight = 0.01
+            # Determine if constraints are hard or soft
+            capacity_hard = (cap_penalty == float('inf'))
+            field_hard = (field_penalty == float('inf'))
+
+            # Set penalty values (for soft constraints)
+            config.penalty.capacity_penalty_per_student = cap_penalty if not capacity_hard else 10
+            config.penalty.field_mismatch_penalty = field_penalty if not field_hard else 5
+            constraint_weight = 0.01 if not (capacity_hard or field_hard) else 0.001
 
             ws_config = WeightedSumConfig(
                 weights=weights,
                 constraint_weight=constraint_weight,
                 preserve_elitism=elite_size,
                 tournament_size=tournament_size,
+                capacity_hard=capacity_hard,
+                field_hard=field_hard,
             )
             ga = WeightedSumGA(config=config, ws_config=ws_config)
             ga.run()
