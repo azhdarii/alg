@@ -1,0 +1,28 @@
+{
+  "algorithm": {
+    "population_size": 100,
+    "max_generations": 200,
+    "crossover_probability": 0.8,
+    "mutation_probability": 0.1,
+    "random_seed": 42
+  },
+  "penalty": {
+    "capacity_penalty_per_student": 10.0,
+    "field_mismatch_penalty": 5.0
+  },
+  "data": {
+    "students_file": "Students.xlsx",
+    "professors_file": "Professors.xlsx",
+    "student_preferences_file": "StudentPreferences.xlsx",
+    "professor_preferences_file": "ProfessorPreferences.xlsx",
+    "universities_file": "Universities.xlsx",
+    "fields_file": "Fields.xlsx",
+    "output_dir": "output"
+  },
+  "logging": {
+    "log_file": "output/weighted_sum_log.csv",
+    "log_level": "INFO",
+    "log_to_console": true,
+    "log_interval": 10
+  }
+}

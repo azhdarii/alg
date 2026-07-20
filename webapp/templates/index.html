@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student-Supervisor Assignment Optimizer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin-bottom: 30px; }
+        header h1 { font-size: 28px; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { padding: 12px 24px; background: white; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
+        .tab:hover { border-color: #667eea; }
+        .tab.active { background: #667eea; color: white; border-color: #667eea; }
+        .panel { display: none; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .panel.active { display: block; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .btn { padding: 14px 28px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: all 0.3s; font-weight: 600; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-sm { padding: 8px 16px; font-size: 13px; }
+        .results { margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; }
+        .results h3 { margin-bottom: 20px; color: #333; }
+        .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .metric-card { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .metric-card .value { font-size: 28px; font-weight: 700; color: #667eea; }
+        .metric-card .label { font-size: 13px; color: #777; margin-top: 5px; }
+        .comparison-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .comparison-table th, .comparison-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .comparison-table th { background: #667eea; color: white; }
+        .comparison-table tr:hover { background: #f5f5f5; }
+        .significance { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .sig-yes { background: #d4edda; color: #155724; }
+        .sig-no { background: #f8d7da; color: #721c24; }
+        .loading { text-align: center; padding: 40px; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .info { background: #d1ecf1; color: #0c5460; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .assignment-list { max-height: 400px; overflow-y: auto; }
+        .assignment-item { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #eee; }
+        .assignment-item:nth-child(even) { background: #f9f9f9; }
+        .dataset-card { border: 2px solid #ddd; border-radius: 10px; padding: 20px; margin-bottom: 15px; transition: all 0.3s; }
+        .dataset-card:hover { border-color: #667eea; }
+        .dataset-card.active { border-color: #28a745; background: #f8fff9; }
+        .dataset-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .dataset-name { font-size: 18px; font-weight: 600; }
+        .dataset-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .badge-predefined { background: #cce5ff; color: #004085; }
+        .badge-uploaded { background: #d4edda; color: #155724; }
+        .badge-active { background: #28a745; color: white; }
+        .dataset-info { color: #666; font-size: 14px; }
+        .dataset-actions { margin-top: 15px; display: flex; gap: 10px; }
+        .upload-zone { border: 3px dashed #ddd; border-radius: 10px; padding: 40px; text-align: center; margin-bottom: 20px; transition: all 0.3s; }
+        .upload-zone:hover { border-color: #667eea; background: #f8f9ff; }
+        .upload-zone.dragover { border-color: #667eea; background: #eef1ff; }
+        .upload-zone input[type="file"] { display: none; }
+        .upload-zone label { cursor: pointer; color: #667eea; font-weight: 600; }
+        .file-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .file-input { border: 1px solid #ddd; border-radius: 8px; padding: 15px; text-align: center; }
+        .file-input.has-file { border-color: #28a745; background: #f8fff9; }
+        .file-input label { cursor: pointer; color: #667eea; font-weight: 600; }
+        .file-input input { display: none; }
+        .preview-table { max-height: 300px; overflow-y: auto; margin-top: 15px; border: 1px solid #eee; border-radius: 8px; }
+        .preview-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .preview-table th { background: #f5f5f5; padding: 8px; text-align: left; position: sticky; top: 0; }
+        .preview-table td { padding: 8px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Student-Supervisor Assignment Optimizer</h1>
+            <p>Compare Weighted Sum GA and NSGA-II algorithms for multi-objective optimization</p>
+        </header>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('datasets')">Datasets</div>
+            <div class="tab" onclick="showTab('single')">Single Run</div>
+            <div class="tab" onclick="showTab('compare')">Compare Algorithms</div>
+            <div class="tab" onclick="showTab('about')">About</div>
+        </div>
+
+        <!-- Datasets Panel -->
+        <div id="datasets" class="panel active">
+            <h2>Manage Datasets</h2>
+            <p style="color: #666; margin-bottom: 20px;">Select a pre-defined dataset or upload your own custom dataset.</p>
+
+            <div id="datasets-list"></div>
+
+            <h3 style="margin-top: 30px; margin-bottom: 15px;">Upload Custom Dataset</h3>
+            <div class="info">
+                Upload Excel files for your custom dataset. Required files: Students.xlsx, Professors.xlsx, StudentPreferences.xlsx, ProfessorPreferences.xlsx.
+            </div>
+
+            <div class="form-group">
+                <label>Dataset Name</label>
+                <input type="text" id="dataset-name" placeholder="my_custom_dataset">
+            </div>
+
+            <div class="file-inputs">
+                <div class="file-input" id="file-students">
+                    <input type="file" id="upload-students" accept=".xlsx" onchange="handleFileSelect('students')">
+                    <label for="upload-students">Students.xlsx (Required)</label>
+                    <div id="students-status" style="font-size: 12px; color: #999; margin-top: 5px;">No file selected</div>
+                </div>
+                <div class="file-input" id="file-professors">
+                    <input type="file" id="upload-professors" accept=".xlsx" onchange="handleFileSelect('professors')">
+                    <label for="upload-professors">Professors.xlsx (Required)</label>
+                    <div id="professors-status" style="font-size: 12px; color: #999; margin-top: 5px;">No file selected</div>
+                </div>
+                <div class="file-input" id="file-student-prefs">
+                    <input type="file" id="upload-student-prefs" accept=".xlsx" onchange="handleFileSelect('student-prefs')">
+                    <label for="upload-student-prefs">StudentPreferences.xlsx (Required)</label>
+                    <div id="student-prefs-status" style="font-size: 12px; color: #999; margin-top: 5px;">No file selected</div>
+                </div>
+                <div class="file-input" id="file-prof-prefs">
+                    <input type="file" id="upload-prof-prefs" accept=".xlsx" onchange="handleFileSelect('prof-prefs')">
+                    <label for="upload-prof-prefs">ProfessorPreferences.xlsx (Required)</label>
+                    <div id="prof-prefs-status" style="font-size: 12px; color: #999; margin-top: 5px;">No file selected</div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="uploadDataset()" style="margin-top: 20px;">
+                Upload Dataset
+            </button>
+
+            <div id="upload-status"></div>
+        </div>
+
+        <!-- Single Run Panel -->
+        <div id="single" class="panel">
+            <h2>Run Single Algorithm</h2>
+            <p style="color: #666; margin-bottom: 20px;">Configure and run one algorithm to see results.</p>
+
+            <div class="info">
+                Active dataset: <strong id="active-dataset-name">loading...</strong>
+            </div>
+
+            <div class="form-group">
+                <label>Algorithm</label>
+                <select id="algorithm">
+                    <option value="weighted_sum">Weighted Sum GA</option>
+                    <option value="nsga2">NSGA-II</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Population Size</label>
+                    <input type="number" id="pop-size" value="50" min="10" max="500">
+                </div>
+                <div class="form-group">
+                    <label>Max Generations</label>
+                    <input type="number" id="max-gen" value="100" min="10" max="1000">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Crossover Probability</label>
+                    <input type="number" id="cx-prob" value="0.8" min="0" max="1" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Mutation Probability</label>
+                    <input type="number" id="mut-prob" value="0.1" min="0" max="1" step="0.05">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tournament Size</label>
+                    <input type="number" id="tournament-size" value="3" min="2" max="10">
+                    <small style="color: #999;">Number of individuals in tournament selection (2=binary)</small>
+                </div>
+                <div class="form-group">
+                    <label>Elitism Size</label>
+                    <input type="number" id="elite-size" value="2" min="0" max="20">
+                    <small style="color: #999;">Best individuals preserved each generation (Weighted Sum only)</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Random Seed</label>
+                <input type="number" id="seed" value="42" min="1">
+            </div>
+
+            <!-- Weighted Sum Specific Parameters -->
+            <div id="ws-params" style="border: 2px solid #667eea; border-radius: 10px; padding: 20px; margin-top: 20px; background: #f8f9ff;">
+                <h4 style="margin-bottom: 15px; color: #667eea;">Weighted Sum Parameters</h4>
+
+                <div class="info" style="margin-bottom: 15px;">
+                    Configure objective weights (must sum to 1.0) and constraint penalties.<br>
+                    Use <strong>inf</strong> for penalties to make them hard constraints (infeasible solutions rejected).
+                </div>
+
+                <h5 style="margin-bottom: 10px; color: #555;">Objective Weights</h5>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Student Satisfaction Weight</label>
+                        <input type="number" id="weight-student" value="0.4" min="0" max="1" step="0.05">
+                    </div>
+                    <div class="form-group">
+                        <label>Professor Satisfaction Weight</label>
+                        <input type="number" id="weight-professor" value="0.4" min="0" max="1" step="0.05">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fairness Weight</label>
+                        <input type="number" id="weight-fairness" value="0.2" min="0" max="1" step="0.05">
+                    </div>
+                    <div class="form-group">
+                        <label style="color: #999;">Weights Sum</label>
+                        <div id="weights-sum" style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; background: #f5f5f5;">1.00</div>
+                    </div>
+                </div>
+
+                <h5 style="margin-bottom: 10px; color: #555; margin-top: 20px;">Constraint Penalties</h5>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Capacity Penalty</label>
+                        <input type="text" id="penalty-capacity" value="10" placeholder="10 or inf">
+                        <small style="color: #999;">Use "inf" for hard constraint</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Field Mismatch Penalty</label>
+                        <input type="text" id="penalty-field" value="5" placeholder="5 or inf">
+                        <small style="color: #999;">Use "inf" for hard constraint</small>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="runSingleAlgorithm()" id="run-single-btn">
+                Run Algorithm
+            </button>
+
+            <div id="single-results"></div>
+        </div>
+
+        <!-- Compare Panel -->
+        <div id="compare" class="panel">
+            <h2>Compare Algorithms</h2>
+            <p style="color: #666; margin-bottom: 20px;">Run both algorithms multiple times and compare statistically.</p>
+
+            <div class="info">
+                Active dataset: <strong id="compare-dataset-name">loading...</strong>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Number of Runs</label>
+                    <input type="number" id="num-runs" value="5" min="2" max="30">
+                </div>
+                <div class="form-group">
+                    <label>Population Size</label>
+                    <input type="number" id="compare-pop-size" value="50" min="10" max="200">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Max Generations</label>
+                    <input type="number" id="compare-max-gen" value="100" min="10" max="500">
+                </div>
+                <div class="form-group">
+                    <label>Crossover Probability</label>
+                    <input type="number" id="compare-cx-prob" value="0.8" min="0" max="1" step="0.1">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Mutation Probability</label>
+                    <input type="number" id="compare-mut-prob" value="0.1" min="0" max="1" step="0.05">
+                </div>
+                <div class="form-group">
+                    <label>Tournament Size</label>
+                    <input type="number" id="compare-tournament-size" value="3" min="2" max="10">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Elitism Size</label>
+                <input type="number" id="compare-elite-size" value="2" min="0" max="20">
+                <small style="color: #999;">Best individuals preserved each generation (Weighted Sum only)</small>
+            </div>
+
+            <!-- Weighted Sum Specific Parameters -->
+            <div id="compare-ws-params" style="border: 2px solid #667eea; border-radius: 10px; padding: 20px; margin-top: 20px; background: #f8f9ff;">
+                <h4 style="margin-bottom: 15px; color: #667eea;">Weighted Sum Parameters</h4>
+
+                <div class="info" style="margin-bottom: 15px;">
+                    Configure objective weights (must sum to 1.0) and constraint penalties.<br>
+                    Use <strong>inf</strong> for penalties to make them hard constraints.
+                </div>
+
+                <h5 style="margin-bottom: 10px; color: #555;">Objective Weights</h5>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Student Satisfaction Weight</label>
+                        <input type="number" id="compare-weight-student" value="0.4" min="0" max="1" step="0.05">
+                    </div>
+                    <div class="form-group">
+                        <label>Professor Satisfaction Weight</label>
+                        <input type="number" id="compare-weight-professor" value="0.4" min="0" max="1" step="0.05">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fairness Weight</label>
+                        <input type="number" id="compare-weight-fairness" value="0.2" min="0" max="1" step="0.05">
+                    </div>
+                    <div class="form-group">
+                        <label style="color: #999;">Weights Sum</label>
+                        <div id="compare-weights-sum" style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; background: #f5f5f5;">1.00</div>
+                    </div>
+                </div>
+
+                <h5 style="margin-bottom: 10px; color: #555; margin-top: 20px;">Constraint Penalties</h5>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Capacity Penalty</label>
+                        <input type="text" id="compare-penalty-capacity" value="10" placeholder="10 or inf">
+                        <small style="color: #999;">Use "inf" for hard constraint</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Field Mismatch Penalty</label>
+                        <input type="text" id="compare-penalty-field" value="5" placeholder="5 or inf">
+                        <small style="color: #999;">Use "inf" for hard constraint</small>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="runComparison()" id="compare-btn">
+                Run Comparison
+            </button>
+
+            <div id="compare-results"></div>
+        </div>
+
+        <!-- About Panel -->
+        <div id="about" class="panel">
+            <h2>About This Tool</h2>
+            <p style="margin-bottom: 20px;">This tool compares two multi-objective optimization algorithms for the Student-Supervisor Assignment Problem.</p>
+
+            <h3 style="margin-bottom: 10px;">Algorithms</h3>
+            <ul style="margin-bottom: 20px; padding-left: 20px;">
+                <li><strong>Weighted Sum GA:</strong> Combines objectives into single fitness using weights</li>
+                <li><strong>NSGA-II:</strong> Non-dominated Sorting Genetic Algorithm II - maintains Pareto front</li>
+            </ul>
+
+            <h3 style="margin-bottom: 10px;">Objectives</h3>
+            <ul style="margin-bottom: 20px; padding-left: 20px;">
+                <li><strong>Student Satisfaction:</strong> Maximize preference matching (higher is better)</li>
+                <li><strong>Professor Satisfaction:</strong> Maximize preference matching (higher is better)</li>
+                <li><strong>Fairness:</strong> Minimize variance in student quality distribution (lower is better)</li>
+            </ul>
+
+            <h3 style="margin-bottom: 10px;">Statistical Testing</h3>
+            <p>Mann-Whitney U Test is used to determine if differences are statistically significant (alpha = 0.05).</p>
+
+            <h3 style="margin-top: 20px; margin-bottom: 10px;">Pre-defined Datasets</h3>
+            <ul style="padding-left: 20px;">
+                <li><strong>small:</strong> 20 students, 8 professors</li>
+                <li><strong>medium:</strong> 60 students, 12 professors</li>
+                <li><strong>large:</strong> 150 students, 28 professors</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let selectedFiles = {
+            students: null,
+            professors: null,
+            'student-prefs': null,
+            'prof-prefs': null
+        };
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabId === 'datasets') loadDatasets();
+        }
+
+        function showLoading(elementId) {
+            document.getElementById(elementId).innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Running optimization... This may take a moment.</p>
+                </div>
+            `;
+        }
+
+        function showError(elementId, message) {
+            document.getElementById(elementId).innerHTML = `<div class="error"><strong>Error:</strong> ${message}</div>`;
+        }
+
+        function showSuccess(elementId, message) {
+            document.getElementById(elementId).innerHTML = `<div class="success">${message}</div>`;
+        }
+
+        // ==================== Dataset Management ====================
+
+        async function loadDatasets() {
+            try {
+                const response = await fetch('/api/datasets');
+                const data = await response.json();
+                displayDatasets(data.datasets, data.active);
+            } catch (e) {
+                showError('datasets-list', e.message);
+            }
+        }
+
+        function displayDatasets(datasets, activeName) {
+            let html = '<h3 style="margin-bottom: 15px;">Available Datasets</h3>';
+
+            if (datasets.length === 0) {
+                html += '<p style="color: #999;">No datasets found.</p>';
+            } else {
+                for (const ds of datasets) {
+                    const isActive = ds.name === activeName || ds.name.includes(activeName);
+                    const badgeClass = ds.type === 'predefined' ? 'badge-predefined' : 'badge-uploaded';
+                    const activeBadge = isActive ? '<span class="dataset-badge badge-active">Active</span>' : '';
+
+                    html += `
+                        <div class="dataset-card ${isActive ? 'active' : ''}">
+                            <div class="dataset-header">
+                                <span class="dataset-name">${ds.name}</span>
+                                <div>
+                                    <span class="dataset-badge ${badgeClass}">${ds.type}</span>
+                                    ${activeBadge}
+                                </div>
+                            </div>
+                            <div class="dataset-info">
+                                Students: ${ds.num_students} | Professors: ${ds.num_professors}
+                            </div>
+                            <div class="dataset-actions">
+                                ${!isActive ? `<button class="btn btn-primary btn-sm" onclick="activateDataset('${ds.name}', '${ds.path.replace(/\\/g, '\\\\')}')">Use This Dataset</button>` : ''}
+                                <button class="btn btn-secondary btn-sm" onclick="previewDataset('${ds.name}')">Preview</button>
+                                ${ds.type === 'uploaded' ? `<button class="btn btn-danger btn-sm" onclick="deleteDataset('${ds.name}')">Delete</button>` : ''}
+                            </div>
+                            <div id="preview-${ds.name}" style="display: none;"></div>
+                        </div>
+                    `;
+                }
+            }
+
+            document.getElementById('datasets-list').innerHTML = html;
+        }
+
+        async function activateDataset(name, path) {
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('path', path);
+
+            try {
+                await fetch('/api/datasets/activate', { method: 'POST', body: formData });
+                document.getElementById('active-dataset-name').textContent = name;
+                document.getElementById('compare-dataset-name').textContent = name;
+                loadDatasets();
+            } catch (e) {
+                alert('Failed to activate dataset: ' + e.message);
+            }
+        }
+
+        async function previewDataset(name) {
+            const previewDiv = document.getElementById('preview-' + name);
+
+            if (previewDiv.style.display === 'block') {
+                previewDiv.style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/datasets/${name}/preview`);
+                const data = await response.json();
+
+                if (data.error) {
+                    previewDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                } else {
+                    let html = '<div class="preview-table"><table><thead><tr>';
+                    for (const col of data.students.columns) {
+                        html += `<th>${col}</th>`;
+                    }
+                    html += '</tr></thead><tbody>';
+                    for (const row of data.students.sample) {
+                        html += '<tr>';
+                        for (const col of data.students.columns) {
+                            html += `<td>${row[col]}</td>`;
+                        }
+                        html += '</tr>';
+                    }
+                    html += '</tbody></table></div>';
+                    html += `<p style="margin-top: 10px; font-size: 12px; color: #999;">Showing first 5 of ${data.students.total} students</p>`;
+                    previewDiv.innerHTML = html;
+                }
+
+                previewDiv.style.display = 'block';
+            } catch (e) {
+                previewDiv.innerHTML = `<div class="error">${e.message}</div>`;
+                previewDiv.style.display = 'block';
+            }
+        }
+
+        async function deleteDataset(name) {
+            if (!confirm(`Are you sure you want to delete dataset "${name}"?`)) return;
+
+            try {
+                await fetch(`/api/datasets/${name}`, { method: 'DELETE' });
+                loadDatasets();
+            } catch (e) {
+                alert('Failed to delete dataset: ' + e.message);
+            }
+        }
+
+        function handleFileSelect(type) {
+            const input = document.getElementById('upload-' + type);
+            const status = document.getElementById(type + '-status');
+            const container = document.getElementById('file-' + type);
+
+            if (input.files.length > 0) {
+                selectedFiles[type] = input.files[0];
+                status.textContent = input.files[0].name;
+                status.style.color = '#28a745';
+                container.classList.add('has-file');
+            } else {
+                selectedFiles[type] = null;
+                status.textContent = 'No file selected';
+                status.style.color = '#999';
+                container.classList.remove('has-file');
+            }
+        }
+
+        async function uploadDataset() {
+            const name = document.getElementById('dataset-name').value.trim();
+            if (!name) {
+                showError('upload-status', 'Please enter a dataset name');
+                return;
+            }
+
+            // Check required files
+            const required = ['students', 'professors', 'student-prefs', 'prof-prefs'];
+            for (const file of required) {
+                if (!selectedFiles[file]) {
+                    showError('upload-status', `Please select ${file} file`);
+                    return;
+                }
+            }
+
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('students', selectedFiles.students);
+            formData.append('professors', selectedFiles.professors);
+            formData.append('student_preferences', selectedFiles['student-prefs']);
+            formData.append('professor_preferences', selectedFiles['prof-prefs']);
+
+            try {
+                showLoading('upload-status');
+                const response = await fetch('/api/datasets/upload', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('upload-status', data.error);
+                } else {
+                    showSuccess('upload-status', `Dataset "${name}" uploaded with ${data.num_students} students and ${data.num_professors} professors`);
+                    loadDatasets();
+
+                    // Reset form
+                    document.getElementById('dataset-name').value = '';
+                    for (const file of required) {
+                        selectedFiles[file] = null;
+                        document.getElementById('upload-' + file).value = '';
+                        document.getElementById(file + '-status').textContent = 'No file selected';
+                        document.getElementById(file + '-status').style.color = '#999';
+                        document.getElementById('file-' + file).classList.remove('has-file');
+                    }
+                }
+            } catch (e) {
+                showError('upload-status', e.message);
+            }
+        }
+
+        // ==================== Algorithm Execution ====================
+
+        // Validate weights sum to 1.0
+        function validateWeights(prefix = '') {
+            const w1 = parseFloat(document.getElementById(prefix + 'weight-student').value) || 0;
+            const w2 = parseFloat(document.getElementById(prefix + 'weight-professor').value) || 0;
+            const w3 = parseFloat(document.getElementById(prefix + 'weight-fairness').value) || 0;
+            const sum = w1 + w2 + w3;
+            const sumElement = document.getElementById(prefix + 'weights-sum');
+            if (sumElement) {
+                sumElement.textContent = sum.toFixed(2);
+                sumElement.style.color = Math.abs(sum - 1.0) < 0.01 ? '#28a745' : '#dc3545';
+            }
+            return Math.abs(sum - 1.0) < 0.01;
+        }
+
+        // Parse penalty value (supports "inf" for hard constraints)
+        function parsePenalty(value) {
+            if (value === 'inf' || value === 'Inf' || value === 'INF' || value === 'Infinity') {
+                return 'inf';
+            }
+            const num = parseFloat(value);
+            return isNaN(num) ? 10 : num;
+        }
+
+        async function runSingleAlgorithm() {
+            const btn = document.getElementById('run-single-btn');
+            btn.disabled = true;
+            showLoading('single-results');
+
+            // Validate weights
+            const algorithm = document.getElementById('algorithm').value;
+            if (algorithm === 'weighted_sum') {
+                if (!validateWeights('')) {
+                    showError('single-results', 'Objective weights must sum to 1.0');
+                    btn.disabled = false;
+                    return;
+                }
+            }
+
+            const formData = new FormData();
+            formData.append('algorithm', algorithm);
+            formData.append('population_size', document.getElementById('pop-size').value);
+            formData.append('max_generations', document.getElementById('max-gen').value);
+            formData.append('crossover_prob', document.getElementById('cx-prob').value);
+            formData.append('mutation_prob', document.getElementById('mut-prob').value);
+            formData.append('tournament_size', document.getElementById('tournament-size').value);
+            formData.append('elite_size', document.getElementById('elite-size').value);
+            formData.append('seed', document.getElementById('seed').value);
+
+            // Weighted Sum specific parameters
+            if (algorithm === 'weighted_sum') {
+                formData.append('weight_student', document.getElementById('weight-student').value);
+                formData.append('weight_professor', document.getElementById('weight-professor').value);
+                formData.append('weight_fairness', document.getElementById('weight-fairness').value);
+                formData.append('penalty_capacity', document.getElementById('penalty-capacity').value);
+                formData.append('penalty_field', document.getElementById('penalty-field').value);
+            }
+
+            try {
+                const response = await fetch('/api/run-single', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('single-results', data.error);
+                } else {
+                    displaySingleResults(data);
+                }
+            } catch (e) {
+                showError('single-results', e.message);
+            }
+
+            btn.disabled = false;
+        }
+
+        function displaySingleResults(data) {
+            let html = `
+                <div class="results">
+                    <h3>${data.algorithm} Results</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="value">${(data.student_satisfaction * 100).toFixed(1)}%</div>
+                            <div class="label">Student Satisfaction</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="value">${(data.professor_satisfaction * 100).toFixed(1)}%</div>
+                            <div class="label">Professor Satisfaction</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="value">${data.fairness.toFixed(4)}</div>
+                            <div class="label">Fairness (lower=better)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="value">${data.execution_time.toFixed(2)}s</div>
+                            <div class="label">Execution Time</div>
+                        </div>
+                    </div>
+            `;
+
+            if (data.fitness !== null && data.fitness !== undefined) {
+                html += `<p><strong>Fitness:</strong> ${data.fitness.toFixed(6)}</p>`;
+            }
+
+            if (data.num_pareto_solutions) {
+                html += `<p><strong>Pareto Front Size:</strong> ${data.num_pareto_solutions} solutions</p>`;
+            }
+
+            if (data.capacity_penalty !== undefined) {
+                html += `<p><strong>Capacity Violations:</strong> ${data.capacity_penalty}</p>`;
+            }
+
+            if (data.field_penalty !== undefined) {
+                html += `<p><strong>Field Mismatches:</strong> ${data.field_penalty}</p>`;
+            }
+
+            if (data.assignments) {
+                html += `
+                    <h4 style="margin-top: 20px;">Assignments</h4>
+                    <div class="assignment-list">
+                `;
+                for (const [student, prof] of Object.entries(data.assignments)) {
+                    html += `<div class="assignment-item"><span>${student}</span><span>→</span><span>${prof}</span></div>`;
+                }
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+            document.getElementById('single-results').innerHTML = html;
+        }
+
+        async function runComparison() {
+            const btn = document.getElementById('compare-btn');
+            btn.disabled = true;
+            showLoading('compare-results');
+
+            // Validate weights
+            if (!validateWeights('compare-')) {
+                showError('compare-results', 'Objective weights must sum to 1.0');
+                btn.disabled = false;
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('num_runs', document.getElementById('num-runs').value);
+            formData.append('population_size', document.getElementById('compare-pop-size').value);
+            formData.append('max_generations', document.getElementById('compare-max-gen').value);
+            formData.append('crossover_prob', document.getElementById('compare-cx-prob').value);
+            formData.append('mutation_prob', document.getElementById('compare-mut-prob').value);
+            formData.append('tournament_size', document.getElementById('compare-tournament-size').value);
+            formData.append('elite_size', document.getElementById('compare-elite-size').value);
+
+            // Weighted Sum specific parameters
+            formData.append('weight_student', document.getElementById('compare-weight-student').value);
+            formData.append('weight_professor', document.getElementById('compare-weight-professor').value);
+            formData.append('weight_fairness', document.getElementById('compare-weight-fairness').value);
+            formData.append('penalty_capacity', document.getElementById('compare-penalty-capacity').value);
+            formData.append('penalty_field', document.getElementById('compare-penalty-field').value);
+
+            try {
+                const response = await fetch('/api/compare', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('compare-results', data.error + '\n' + (data.traceback || ''));
+                } else {
+                    displayComparisonResults(data);
+                }
+            } catch (e) {
+                showError('compare-results', e.message);
+            }
+
+            btn.disabled = false;
+        }
+
+        function displayComparisonResults(data) {
+            let html = `
+                <div class="results">
+                    <h3>Comparison Results (${data.num_runs} runs)</h3>
+
+                    <h4 style="margin-top: 20px;">Statistical Summary</h4>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Weighted Sum (Median)</th>
+                                <th>NSGA-II (Median)</th>
+                                <th>Winner</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            const metrics = ['student_satisfaction', 'professor_satisfaction', 'fairness', 'execution_time'];
+            const metricLabels = {
+                'student_satisfaction': 'Student Satisfaction',
+                'professor_satisfaction': 'Professor Satisfaction',
+                'fairness': 'Fairness',
+                'execution_time': 'Execution Time (s)'
+            };
+
+            for (const metric of metrics) {
+                const wsVal = data.weighted_sum.stats[metric].median;
+                const nsga2Val = data.nsga2.stats[metric].median;
+
+                let winner;
+                if (metric === 'fairness' || metric === 'execution_time') {
+                    winner = wsVal < nsga2Val ? 'Weighted Sum' : 'NSGA-II';
+                } else {
+                    winner = wsVal > nsga2Val ? 'Weighted Sum' : 'NSGA-II';
+                }
+
+                const formatVal = metric.includes('satisfaction') ? (wsVal * 100).toFixed(1) + '%' :
+                                  metric === 'execution_time' ? wsVal.toFixed(2) + 's' :
+                                  wsVal.toFixed(4);
+
+                const formatVal2 = metric.includes('satisfaction') ? (nsga2Val * 100).toFixed(1) + '%' :
+                                   metric === 'execution_time' ? nsga2Val.toFixed(2) + 's' :
+                                   nsga2Val.toFixed(4);
+
+                html += `
+                    <tr>
+                        <td>${metricLabels[metric]}</td>
+                        <td>${formatVal}</td>
+                        <td>${formatVal2}</td>
+                        <td><strong>${winner}</strong></td>
+                    </tr>
+                `;
+            }
+
+            html += `
+                        </tbody>
+                    </table>
+
+                    <h4 style="margin-top: 30px;">Statistical Tests (Mann-Whitney U)</h4>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>U Statistic</th>
+                                <th>p-value</th>
+                                <th>Significant?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            for (const test of data.statistical_tests) {
+                const sigClass = test.significant ? 'sig-yes' : 'sig-no';
+                const sigText = test.significant ? 'YES (p < 0.05)' : 'NO';
+
+                html += `
+                    <tr>
+                        <td>${metricLabels[test.metric] || test.metric}</td>
+                        <td>${test.u_statistic.toFixed(2)}</td>
+                        <td>${test.p_value.toFixed(4)}</td>
+                        <td><span class="significance ${sigClass}">${sigText}</span></td>
+                    </tr>
+                `;
+            }
+
+            html += `
+                        </tbody>
+                    </table>
+
+                    <h4 style="margin-top: 30px;">Detailed Statistics</h4>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Algorithm</th>
+                                <th>Median</th>
+                                <th>Q1</th>
+                                <th>Q3</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            for (const metric of metrics) {
+                const wsStats = data.weighted_sum.stats[metric];
+                const nsga2Stats = data.nsga2.stats[metric];
+
+                html += `
+                    <tr>
+                        <td rowspan="2">${metricLabels[metric]}</td>
+                        <td>Weighted Sum</td>
+                        <td>${wsStats.median.toFixed(4)}</td>
+                        <td>${wsStats.q1.toFixed(4)}</td>
+                        <td>${wsStats.q3.toFixed(4)}</td>
+                    </tr>
+                    <tr>
+                        <td>NSGA-II</td>
+                        <td>${nsga2Stats.median.toFixed(4)}</td>
+                        <td>${nsga2Stats.q1.toFixed(4)}</td>
+                        <td>${nsga2Stats.q3.toFixed(4)}</td>
+                    </tr>
+                `;
+            }
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            document.getElementById('compare-results').innerHTML = html;
+        }
+
+        // Load datasets on page load and initialize weight validation
+        window.onload = function() {
+            loadDatasets();
+            validateWeights('');
+            validateWeights('compare-');
+
+            // Add event listeners for real-time weight validation
+            ['weight-student', 'weight-professor', 'weight-fairness'].forEach(id => {
+                document.getElementById(id).addEventListener('input', () => validateWeights(''));
+            });
+            ['compare-weight-student', 'compare-weight-professor', 'compare-weight-fairness'].forEach(id => {
+                document.getElementById(id).addEventListener('input', () => validateWeights('compare-'));
+            });
+        };
+    </script>
+</body>
+</html>
